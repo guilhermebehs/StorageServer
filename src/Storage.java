@@ -6,6 +6,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.JTextArea;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -20,10 +21,12 @@ public class Storage implements Runnable {
 
     private List<FileFragment> fragmentos = new ArrayList();
     private static final String FINAL_ARQUIVO = "255,255,255,255,255";
+    private JTextArea logArea;   
     private int porta;
     
-    public Storage(int porta){
+    public Storage(int porta,JTextArea logArea){
         this.porta = porta;
+        this.logArea = logArea;
     }
     
     
@@ -57,6 +60,10 @@ public class Storage implements Runnable {
                         bytes[i] = ints.get(i).byteValue();
                     }
                     
+                    String log = logArea.getText();
+                    log += bytes.length+" bytes recebidos na porta "+porta+"\n";
+                    logArea.setText(log);
+                    
                      int idNovo = is.read();
                      int sequence = is.read();
                      FileFragment fragment = new FileFragment();
@@ -68,6 +75,10 @@ public class Storage implements Runnable {
                 else if(operacao == Operacao.RETORNAR_BYTES.valor){
                     
                     int id = is.read();
+                    String log = logArea.getText();
+                    log += "Solicitados os bytes do id "+id+" na porta "+porta+"\n";
+                    logArea.setText(log);
+                    
                     for (FileFragment frag : fragmentos) {
                         if (frag.getFileFragmentLocationId() == id) {
                             byte[] bytes = frag.getBytes();

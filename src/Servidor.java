@@ -12,10 +12,7 @@ public class Servidor {
     
     public static void main(String[] args) {
         
-        new Thread(new StoragePivo()).start();
-        new Thread(new Storage(Porta.PORTA2.valor)).start();
-        new Thread(new Storage(Porta.PORTA3.valor)).start();
-        new Thread(new Storage(Porta.PORTA4.valor)).start();
+        
         
         
     }

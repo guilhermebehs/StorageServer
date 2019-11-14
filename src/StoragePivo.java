@@ -13,6 +13,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.table.DefaultTableModel;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -26,9 +29,16 @@ import java.util.logging.Logger;
 public class StoragePivo implements Runnable {
 
     private List<FileFragment> fragmentos = new ArrayList();
-    
+    private JTextArea logArea;
+    private JTable tabela;
     private static final String FINAL_ARQUIVO = "255,255,255,255,255";
 
+    public StoragePivo(JTextArea logArea,JTable tabela){
+        
+        this.logArea = logArea;
+        this.tabela = tabela;
+    }
+    
     public void iniciarConexao() {
 
         ServerSocket s;
@@ -59,6 +69,9 @@ public class StoragePivo implements Runnable {
                     }
                     int lengthFinal = ints.size()-5;
                     byte[] bytes = new byte[lengthFinal];
+                    String log = logArea.getText();
+                    log += "Arquivo de "+lengthFinal+" bytes recebido\n";
+                    logArea.setText(log);
 
                     for (int i = 0; i <lengthFinal; i++) {
                         bytes[i] = ints.get(i).byteValue();
@@ -110,6 +123,9 @@ public class StoragePivo implements Runnable {
 
                 } else if (operacao == Operacao.RETORNAR_BYTES.valor) {
                     int id = is.read();
+                    String log = logArea.getText();
+                    log += "Arquivo com id "+id+" solicitado\n";
+                    logArea.setText(log);
                     byte[] bytes = montarBytes(id);
                     os.write(bytes);
                 }
@@ -129,10 +145,9 @@ public class StoragePivo implements Runnable {
 
     public void enviarParaStorages(int id, List<byte[]> bytes) {
 
-                  for(byte[] byt: bytes){
-                      for(int i=0; i < byt.length; i++)
-                          System.out.println(byt[i]);
-                      }
+        
+        DefaultTableModel model = (DefaultTableModel) tabela.getModel();
+        model.addRow(new Object[]{id,bytes.get(3).length, bytes.get(0).length, bytes.get(1).length, bytes.get(2).length});
         
         enviar(Porta.PORTA2.valor, id,1 ,bytes.get(0));
         enviar(Porta.PORTA3.valor, id,2,bytes.get(1));
