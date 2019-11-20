@@ -31,7 +31,6 @@ public class StoragePivo implements Runnable {
     private List<FileFragment> fragmentos = new ArrayList();
     private JTextArea logArea;
     private JTable tabela;
-    private static final String FINAL_ARQUIVO = "255,255,255,255,255";
 
     public StoragePivo(JTextArea logArea,JTable tabela){
         
@@ -54,41 +53,28 @@ public class StoragePivo implements Runnable {
                 is = socketComCliente.getInputStream();
                 os = socketComCliente.getOutputStream();
 
-                List<Integer> ints = new ArrayList();
                 List<byte[]> bytesPorStorage = new ArrayList();
+                String log = "";
+                 
                 operacao = is.read();
                 if (operacao == Operacao.ENVIAR_BYTES.valor) {
 
-                    int b = 0;
-                    String sinalFimLeitura = "";
-                    while (!(sinalFimLeitura.contains(FINAL_ARQUIVO)) && (b = is.read()) != -1) {
-
-                        String[] sinalFimLeituraSplit = sinalFimLeitura.split(",");
-                        sinalFimLeitura += "," + b;
-                        ints.add(b);
-                    }
-                    int lengthFinal = ints.size()-5;
-                    byte[] bytes = new byte[lengthFinal];
-                    String log = logArea.getText();
-                    log += "Arquivo de "+lengthFinal+" bytes recebido\n";
-                    logArea.setText(log);
-
-                    for (int i = 0; i <lengthFinal; i++) {
-                        bytes[i] = ints.get(i).byteValue();
-                    }
-       
-
-                    int idNovo = (fragmentos.size()) + 1;
+                   int idNovo = (fragmentos.size()) + 1;
+                   os.write(idNovo);
+                   Thread.sleep(3000);
                    
-                int lengthForStorage = (int)(lengthFinal / 4);
-                int bytesFaltando = lengthFinal - (lengthForStorage * 4); 
+                   byte[] bytesFinal = retornaArquivoEmBytes(is);
+                    
+             
+                int lengthForStorage = (int)(bytesFinal.length / 4);
+                int bytesFaltando = bytesFinal.length - (lengthForStorage * 4); 
             
              
                 byte[]  bytesAux = new byte[lengthForStorage];
                 byte[]  bytesAux2 = new byte[lengthForStorage+bytesFaltando]; 
                 int count = 0;
                 
-                for(byte byt: bytes){
+                for(byte byt: bytesFinal){
                     
                     if(bytesPorStorage.size() < 3){
                        bytesAux[count] = byt; 
@@ -119,14 +105,23 @@ public class StoragePivo implements Runnable {
                     fragment.setSequence(4);
                     fragmentos.add(fragment);
                     enviarParaStorages(idNovo, bytesPorStorage);
-                    os.write(idNovo);
+                    Thread.sleep(3000);
+                    log = logArea.getText();
+                    log += "Upload realizado!\n";
+                    logArea.setText(log);
+                    //Sinaliza que acabou
+                    os.write(0);
 
                 } else if (operacao == Operacao.RETORNAR_BYTES.valor) {
                     int id = is.read();
-                    String log = logArea.getText();
+                    log = logArea.getText();
                     log += "Arquivo com id "+id+" solicitado\n";
                     logArea.setText(log);
                     byte[] bytes = montarBytes(id);
+                    log = logArea.getText();
+                    log += "Download enviado!\n";
+                    logArea.setText(log);
+                    os.write(0);
                     os.write(bytes);
                 }
 
@@ -163,10 +158,9 @@ public class StoragePivo implements Runnable {
             socketServidor = new Socket("localhost" ,porta);
             saida = socketServidor.getOutputStream();
             saida.write(1);
-            saida.write(bytes);
-            sinalizarFimArquivo(saida);
             saida.write(id);
             saida.write(sequencia);
+            saida.write(bytes);
             saida.close();
 
         } catch (IOException ex) {
@@ -190,33 +184,25 @@ public class StoragePivo implements Runnable {
         Socket socketServidor;
         OutputStream saida;
         InputStream entrada;
-        byte[] bytes = new byte[1024];
+        byte[] bytesFinal = new byte[1024];
         try {
             socketServidor = new Socket("localhost", porta);
             saida = socketServidor.getOutputStream();
             entrada = socketServidor.getInputStream();
-            List<Integer> ints = new ArrayList();
             saida.write(2);
             saida.write(id);
-            int b ;
-                    String sinalFimLeitura = "";
-                    while (!(sinalFimLeitura.contains(FINAL_ARQUIVO)) && (b = entrada.read()) != -1) {
-
-                        String[] sinalFimLeituraSplit = sinalFimLeitura.split(",");
-                        sinalFimLeitura += "," + b;
-                        ints.add(b);
-                    }
-            bytes = new byte[ints.size()-5];
-
-            for (int i = 0; i < ints.size()-5; i++) {
-                bytes[i] = ints.get(i).byteValue();
-            }
+            Thread.sleep(2000);
+          
+            bytesFinal = retornaArquivoEmBytes(entrada);
+            
 
         } catch (IOException ex) {
-             ex.printStackTrace();
+            ex.printStackTrace();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(StoragePivo.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        return bytes;
+        return bytesFinal;
     }
 
      public byte[] montarBytes(int id) {
@@ -230,7 +216,6 @@ public class StoragePivo implements Runnable {
                         }
                     }
 
-        
         int length = 0;
         for (byte[] b : bytesList) {
             length += b.length;
@@ -239,31 +224,46 @@ public class StoragePivo implements Runnable {
         byte[] bytes = new byte[length];
        
        int count =0; 
-       for(byte[] byt: bytesList)
+       for(byte[] byt: bytesList){
            for(int i=0; i < byt.length; i++){
                bytes[count] = byt[i];
                count++;
            }
+       }
        
         return bytes;
 
     }
      
-     
-     public void sinalizarFimArquivo(OutputStream saida){
-         
-        try {
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);        
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-         
-     }
+     public byte[] retornaArquivoEmBytes(InputStream entrada) {
 
+        List<byte[]> bytesList = new ArrayList();
+        byte[] bytesFinal = new byte[1024];
+        int lengthFinal = 0;
+        try {
+            while (entrada.available() > 0) {
+                lengthFinal += entrada.available();
+                byte[] bytes = new byte[entrada.available()];
+                entrada.read(bytes, 0, entrada.available());
+                bytesList.add(bytes);
+            }
+            bytesFinal = new byte[lengthFinal];
+            int y = 0;
+            for (byte[] byt : bytesList) {
+                for (int i = 0; i < byt.length; i++) {
+                    bytesFinal[y] = byt[i];
+                    y++;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return bytesFinal;
+    }
+     
+   
     @Override
     public void run() {
        iniciarConexao();

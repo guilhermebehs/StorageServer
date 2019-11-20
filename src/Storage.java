@@ -20,7 +20,6 @@ import javax.swing.JTextArea;
 public class Storage implements Runnable {
 
     private List<FileFragment> fragmentos = new ArrayList();
-    private static final String FINAL_ARQUIVO = "255,255,255,255,255";
     private JTextArea logArea;   
     private int porta;
     
@@ -43,31 +42,22 @@ public class Storage implements Runnable {
                 is = client.getInputStream();
                 os = client.getOutputStream();
 
-                List<Integer> ints = new ArrayList();
                 int operacao = is.read();
                 if(operacao == Operacao.ENVIAR_BYTES.valor){
-                     int b = 0;
-                    String sinalFimLeitura = "";
-                    while (!(sinalFimLeitura.contains(FINAL_ARQUIVO)) && (b = is.read()) != -1) {
-
-                        String[] sinalFimLeituraSplit = sinalFimLeitura.split(",");
-                        sinalFimLeitura += "," + b;
-                        ints.add(b);
-                    }
-                    byte[] bytes = new byte[ints.size()-5];
-
-                    for (int i = 0; i < ints.size()-5; i++) {
-                        bytes[i] = ints.get(i).byteValue();
-                    }
-                    
+                   int idNovo = is.read();
+                   int sequence = is.read();
+                   Thread.sleep(2000);
+                  
+                    byte[] bytesFinal = retornaArquivoEmBytes(is);
+                  
+        
                     String log = logArea.getText();
-                    log += bytes.length+" bytes recebidos na porta "+porta+"\n";
+                    log += bytesFinal.length+" bytes recebidos na porta "+porta+"\n";
                     logArea.setText(log);
                     
-                     int idNovo = is.read();
-                     int sequence = is.read();
+                   
                      FileFragment fragment = new FileFragment();
-                    fragment.setBytes(bytes);
+                    fragment.setBytes(bytesFinal);
                     fragment.setFileFragmentLocationId(idNovo);
                     fragment.setSequence(sequence);
                     fragmentos.add(fragment);   
@@ -83,10 +73,7 @@ public class Storage implements Runnable {
                         if (frag.getFileFragmentLocationId() == id) {
                             byte[] bytes = frag.getBytes();
                             os.write(bytes);
-                            
-                            sinalizarFimArquivo(os);
                            
-                            os.write(frag.getSequence());
                             break;
                         }
                     }
@@ -102,19 +89,34 @@ public class Storage implements Runnable {
         
     }
     
-     public void sinalizarFimArquivo(OutputStream saida){
-         
+     public byte[] retornaArquivoEmBytes(InputStream entrada) {
+
+        List<byte[]> bytesList = new ArrayList();
+        byte[] bytesFinal = new byte[1024];
+        int lengthFinal = 0;
         try {
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);
-            saida.write(-1);        
-        } catch (IOException ex) {
-            ex.printStackTrace();
+            while (entrada.available() > 0) {
+                lengthFinal += entrada.available();
+                byte[] bytes = new byte[entrada.available()];
+                entrada.read(bytes, 0, entrada.available());
+                bytesList.add(bytes);
+            }
+            bytesFinal = new byte[lengthFinal];
+            int y = 0;
+            for (byte[] byt : bytesList) {
+                for (int i = 0; i < byt.length; i++) {
+                    bytesFinal[y] = byt[i];
+                    y++;
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-         
-     }
+
+        return bytesFinal;
+    }
+    
 
     @Override
     public void run() {
