@@ -10,7 +10,7 @@
 public enum Operacao {
     
     
-     ENVIAR_BYTES(1), RETORNAR_BYTES(2);
+     UPLOAD(1), DOWNLOAD(2);
     
      public int valor;
      

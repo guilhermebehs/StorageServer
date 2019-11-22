@@ -57,7 +57,7 @@ public class StoragePivo implements Runnable {
                 String log = "";
                  
                 operacao = is.read();
-                if (operacao == Operacao.ENVIAR_BYTES.valor) {
+                if (operacao == Operacao.UPLOAD.valor) {
 
                    int idNovo = (fragmentos.size()) + 1;
                    os.write(idNovo);
@@ -102,7 +102,6 @@ public class StoragePivo implements Runnable {
                     FileFragment fragment = new FileFragment();
                     fragment.setBytes(bytesPorStorage.get(3));
                     fragment.setFileFragmentLocationId(idNovo);
-                    fragment.setSequence(4);
                     fragmentos.add(fragment);
                     enviarParaStorages(idNovo, bytesPorStorage);
                     Thread.sleep(3000);
@@ -112,7 +111,7 @@ public class StoragePivo implements Runnable {
                     //Sinaliza que acabou
                     os.write(0);
 
-                } else if (operacao == Operacao.RETORNAR_BYTES.valor) {
+                } else if (operacao == Operacao.DOWNLOAD.valor) {
                     int id = is.read();
                     log = logArea.getText();
                     log += "Arquivo com id "+id+" solicitado\n";

@@ -11,7 +11,6 @@
 public class FileFragment {
     
     private int fileFragmentLocationId;
-    private int sequence;
     private byte[] bytes;
    
     
@@ -42,24 +41,6 @@ public class FileFragment {
      */
     public void setFileFragmentLocationId(int fileFragmentLocationId) {
         this.fileFragmentLocationId = fileFragmentLocationId;
-    }
-
-    /**
-     * @return the sequency
-     */
-    
-      /**
-     * @return the sequence
-     */
-    public int getSequence() {
-        return sequence;
-    }
-
-    /**
-     * @param sequence the sequence to set
-     */
-    public void setSequence(int sequence) {
-        this.sequence = sequence;
     }
     
    

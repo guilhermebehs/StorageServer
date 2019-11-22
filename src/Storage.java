@@ -43,7 +43,7 @@ public class Storage implements Runnable {
                 os = client.getOutputStream();
 
                 int operacao = is.read();
-                if(operacao == Operacao.ENVIAR_BYTES.valor){
+                if(operacao == Operacao.UPLOAD.valor){
                    int idNovo = is.read();
                    int sequence = is.read();
                    Thread.sleep(2000);
@@ -59,10 +59,9 @@ public class Storage implements Runnable {
                      FileFragment fragment = new FileFragment();
                     fragment.setBytes(bytesFinal);
                     fragment.setFileFragmentLocationId(idNovo);
-                    fragment.setSequence(sequence);
                     fragmentos.add(fragment);   
                 }
-                else if(operacao == Operacao.RETORNAR_BYTES.valor){
+                else if(operacao == Operacao.DOWNLOAD.valor){
                     
                     int id = is.read();
                     String log = logArea.getText();
