@@ -17,27 +17,18 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-/**
- *
- * @author 0151194
- */
 public class StoragePivo implements Runnable {
 
     private List<FileFragment> fragmentos = new ArrayList();
     private JTextArea logArea;
     private JTable tabela;
 
-    public StoragePivo(JTextArea logArea,JTable tabela){
-        
+    public StoragePivo(JTextArea logArea, JTable tabela) {
+
         this.logArea = logArea;
         this.tabela = tabela;
     }
-    
+
     public void iniciarConexao() {
 
         ServerSocket s;
@@ -55,50 +46,18 @@ public class StoragePivo implements Runnable {
 
                 List<byte[]> bytesPorStorage = new ArrayList();
                 String log = "";
-                 
+
                 operacao = is.read();
                 if (operacao == Operacao.UPLOAD.valor) {
 
-                   int idNovo = (fragmentos.size()) + 1;
-                   os.write(idNovo);
-                   Thread.sleep(3000);
-                   
-                   byte[] bytesFinal = retornaArquivoEmBytes(is);
-                    
-             
-                int lengthForStorage = (int)(bytesFinal.length / 4);
-                int bytesFaltando = bytesFinal.length - (lengthForStorage * 4); 
-            
-             
-                byte[]  bytesAux = new byte[lengthForStorage];
-                byte[]  bytesAux2 = new byte[lengthForStorage+bytesFaltando]; 
-                int count = 0;
-                
-                for(byte byt: bytesFinal){
-                    
-                    if(bytesPorStorage.size() < 3){
-                       bytesAux[count] = byt; 
-                       count++;
-                        if(count == lengthForStorage){
-                           bytesPorStorage.add(bytesAux);
-                           bytesAux = new byte[lengthForStorage];
-                           count =0; 
-                        }
-                        
-                    }
-                    else{
-                        bytesAux2[count] = byt; 
-                         count++;
-                         if(count == (lengthForStorage+bytesFaltando)){
-                           bytesPorStorage.add(bytesAux2);
-                           bytesAux2 = new byte[lengthForStorage+bytesFaltando];
-                           count =0; 
-                        }
-                    }
-                        
-                }
-     
-                
+                    int idNovo = (fragmentos.size()) + 1;
+                    os.write(idNovo);
+                    Thread.sleep(3000);
+
+                    byte[] bytesFinal = retornaArquivoEmBytes(is);
+
+                    bytesPorStorage = agruparBytes(bytesFinal);
+
                     FileFragment fragment = new FileFragment();
                     fragment.setBytes(bytesPorStorage.get(3));
                     fragment.setFileFragmentLocationId(idNovo);
@@ -114,7 +73,7 @@ public class StoragePivo implements Runnable {
                 } else if (operacao == Operacao.DOWNLOAD.valor) {
                     int id = is.read();
                     log = logArea.getText();
-                    log += "Arquivo com id "+id+" solicitado\n";
+                    log += "Arquivo com id " + id + " solicitado\n";
                     logArea.setText(log);
                     byte[] bytes = montarBytes(id);
                     log = logArea.getText();
@@ -135,28 +94,25 @@ public class StoragePivo implements Runnable {
         }
     }
 
-    
-
     public void enviarParaStorages(int id, List<byte[]> bytes) {
 
-        
         DefaultTableModel model = (DefaultTableModel) tabela.getModel();
-        model.addRow(new Object[]{id,bytes.get(3).length, bytes.get(0).length, bytes.get(1).length, bytes.get(2).length});
-        
-        enviar(Porta.PORTA2.valor, id,1 ,bytes.get(0));
-        enviar(Porta.PORTA3.valor, id,2,bytes.get(1));
-        enviar(Porta.PORTA4.valor, id, 3,bytes.get(2));
+        model.addRow(new Object[]{id, bytes.get(3).length, bytes.get(0).length, bytes.get(1).length, bytes.get(2).length});
+
+        enviar(Porta.PORTA2.valor, id, 1, bytes.get(0));
+        enviar(Porta.PORTA3.valor, id, 2, bytes.get(1));
+        enviar(Porta.PORTA4.valor, id, 3, bytes.get(2));
 
     }
 
-    public void enviar(int porta, int id, int sequencia ,byte[] bytes) {
+    public void enviar(int porta, int id, int sequencia, byte[] bytes) {
 
         Socket socketServidor;
         OutputStream saida;
         try {
-            socketServidor = new Socket("localhost" ,porta);
+            socketServidor = new Socket("localhost", porta);
             saida = socketServidor.getOutputStream();
-            saida.write(1);
+            saida.write(Operacao.UPLOAD.valor);
             saida.write(id);
             saida.write(sequencia);
             saida.write(bytes);
@@ -188,12 +144,11 @@ public class StoragePivo implements Runnable {
             socketServidor = new Socket("localhost", porta);
             saida = socketServidor.getOutputStream();
             entrada = socketServidor.getInputStream();
-            saida.write(2);
+            saida.write(Operacao.DOWNLOAD.valor);
             saida.write(id);
             Thread.sleep(2000);
-          
+
             bytesFinal = retornaArquivoEmBytes(entrada);
-            
 
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -204,16 +159,16 @@ public class StoragePivo implements Runnable {
         return bytesFinal;
     }
 
-     public byte[] montarBytes(int id) {
+    public byte[] montarBytes(int id) {
 
         List<byte[]> bytesList = receberDosStorages(id);
         for (FileFragment frag : fragmentos) {
-                        if (frag.getFileFragmentLocationId() == id) {
-                            byte[] bytes = frag.getBytes();
-                            bytesList.add(bytes);
-                            break;
-                        }
-                    }
+            if (frag.getFileFragmentLocationId() == id) {
+                byte[] bytes = frag.getBytes();
+                bytesList.add(bytes);
+                break;
+            }
+        }
 
         int length = 0;
         for (byte[] b : bytesList) {
@@ -221,20 +176,20 @@ public class StoragePivo implements Runnable {
         }
 
         byte[] bytes = new byte[length];
-       
-       int count =0; 
-       for(byte[] byt: bytesList){
-           for(int i=0; i < byt.length; i++){
-               bytes[count] = byt[i];
-               count++;
-           }
-       }
-       
+
+        int count = 0;
+        for (byte[] byt : bytesList) {
+            for (int i = 0; i < byt.length; i++) {
+                bytes[count] = byt[i];
+                count++;
+            }
+        }
+
         return bytes;
 
     }
-     
-     public byte[] retornaArquivoEmBytes(InputStream entrada) {
+
+    public byte[] retornaArquivoEmBytes(InputStream entrada) {
 
         List<byte[]> bytesList = new ArrayList();
         byte[] bytesFinal = new byte[1024];
@@ -261,11 +216,46 @@ public class StoragePivo implements Runnable {
 
         return bytesFinal;
     }
-     
-   
+
+    public List agruparBytes(byte[] bytesFinal) {
+
+        List<byte[]> bytesPorStorage = new ArrayList();
+
+        int lengthForStorage = (int) (bytesFinal.length / 4);
+        int bytesFaltando = bytesFinal.length - (lengthForStorage * 4);
+
+        byte[] bytesAux = new byte[lengthForStorage];
+        byte[] bytesAux2 = new byte[lengthForStorage + bytesFaltando];
+        int count = 0;
+
+        for (byte byt : bytesFinal) {
+
+            if (bytesPorStorage.size() < 3) {
+                bytesAux[count] = byt;
+                count++;
+                if (count == lengthForStorage) {
+                    bytesPorStorage.add(bytesAux);
+                    bytesAux = new byte[lengthForStorage];
+                    count = 0;
+                }
+
+            } else {
+                bytesAux2[count] = byt;
+                count++;
+                if (count == (lengthForStorage + bytesFaltando)) {
+                    bytesPorStorage.add(bytesAux2);
+                    bytesAux2 = new byte[lengthForStorage + bytesFaltando];
+                    count = 0;
+                }
+            }
+        }
+        return bytesPorStorage;
+
+    }
+
     @Override
     public void run() {
-       iniciarConexao();
+        iniciarConexao();
     }
 
 }
